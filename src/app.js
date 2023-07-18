@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
-import { MongoClient } from "mongodb"
+import { MongoClient, ObjectId } from "mongodb"
 import joi from "joi"
 import dayjs from "dayjs"
 
@@ -23,16 +23,16 @@ mongoClient.connect()
 app.post("/poll", async (req, res) => {
     const { title, expireAt } = req.body
 
-    const schemaPoll = joi.object({
+    const schemaChoice = joi.object({
         title: joi.string().required(),
         expireAt: joi.string().allow("")
     })
 
-    const validation = schemaPoll.validate(req.body, { abortEarly: false })
+    const validation = schemaChoice.validate(req.body, { abortEarly: false })
 
     if (validation.error) {
         const errors = validation.error.details.map((detail) => detail.message);
-        return res.status(422).send(errors);
+        return res.status(422).send(errors)
     }
 
     try {
@@ -58,6 +58,40 @@ app.get("/poll", async (req, res) => {
         res.status(500).send(err.message)
     }
 })
+
+app.post("/choice", async (req, res) => {
+    const { title, pollId } = req.body
+
+    const schemaChoice = joi.object({
+        title: joi.string().required(),
+        pollId: joi.string().required()
+    })
+
+    const validation = schemaChoice.validate(req.body, { abortEarly: false })
+
+    if (validation.error) {
+        const errors = validation.error.details.map((detail) => detail.message);
+        return res.status(422).send(errors)
+    }
+
+    try {
+        const pollSearch = await db.collection("polls").findOne({ _id: new ObjectId(pollId) })
+        const titleSearch = await db.collection("choices").findOne({ title: title })
+
+        if (!pollSearch) return res.sendStatus(404)
+
+        if (titleSearch) return res.sendStatus(409)
+
+        if (dayjs(pollSearch.expireAt).isBefore(dayjs())) return res.sendStatus(403)
+
+        await db.collection("choices").insertOne({ title, pollId })
+        res.sendStatus(201)
+
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
 
 const PORT = 5000
 app.listen(PORT, () => (`servidor rodando na porta ${PORT}`))
