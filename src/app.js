@@ -24,7 +24,8 @@ app.post("/poll", async (req, res) => {
     const { title, expireAt } = req.body
 
     const schemaPoll = joi.object({
-        title: joi.string().required()
+        title: joi.string().required(),
+        expireAt: joi.string().allow("")
     })
 
     const validation = schemaPoll.validate(req.body, { abortEarly: false })
@@ -35,13 +36,12 @@ app.post("/poll", async (req, res) => {
     }
 
     try {
-        if (expireAt === "") {
-            poll = { title, expireAt: dayjs().format('YYYY-MM-DDTHH:mm').add(1, 'month') }
+        if (expireAt != "") {
+            await db.collection("polls").insertOne({ title, expireAt })
         } else {
-            poll = { title, expireAt }
+            await db.collection("polls").insertOne({ title, expireAt: dayjs().add(30, 'day').format('YYYY-MM-DD HH:mm') })
         }
 
-        await db.collection("polls").insertOne(poll)
         res.sendStatus(201)
 
     } catch (err) {
