@@ -49,6 +49,15 @@ app.post("/poll", async (req, res) => {
     }
 })
 
+app.get("/poll", async (req, res) => {
+    try {
+        const pollsList = await db.collection("polls").find().toArray()
+
+        res.send(pollsList).status(200)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
 
 const PORT = 5000
 app.listen(PORT, () => (`servidor rodando na porta ${PORT}`))
