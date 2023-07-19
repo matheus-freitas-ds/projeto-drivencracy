@@ -98,10 +98,30 @@ app.get("/poll/:id/choice", async (req, res) => {
 
     try {
         const choicesList = await db.collection("choices").find({ pollId: id }).toArray()
-        
+
         if (choicesList.length === 0) return res.sendStatus(404)
 
         res.send(choicesList).status(200)
+
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+app.post("/choice/:id/vote", async (req, res) => {
+    const { id } = req.params
+
+    try {
+        const vote = { createdAt: dayjs().format('YYYY-MM-DD HH:mm'), choiceId: id }
+        const choice = await db.collection("choices").findOne({ _id: new ObjectId(id) })
+        const poll = await db.collection("polls").findOne({ _id: new ObjectId(choice.pollId) })
+
+        if (!choice) return (res.sendStatus(404))
+
+        if (dayjs(poll.expireAt).isBefore(dayjs())) return res.sendStatus(403)
+
+        await db.collection("votes").insertOne(vote)
+        res.sendStatus(201)
 
     } catch (err) {
         res.status(500).send(err.message)
